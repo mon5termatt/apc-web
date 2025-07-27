@@ -1,6 +1,7 @@
 # APC UPS Web Monitor
 
 A simple web server that displays real-time statistics from a networked APCUPSD installation.
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b2c9feea-16a8-4192-8685-1a7d18bd36fc" />
 
 ## Requirements
 
