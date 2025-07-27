@@ -2,7 +2,7 @@
 
 A simple web server that displays real-time statistics from a networked APCUPSD installation.
 
-#### Note, this software was set up to work with <b>MY UPS</b>. not yours. you <b>WILL</b> have to change the settings to fit your needs. 
+Note, this software was set up to work with <b>MY UPS</b>. not yours. you <b>WILL</b> have to change the settings to fit your needs. 
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b2c9feea-16a8-4192-8685-1a7d18bd36fc" />
 
 ## Requirements
