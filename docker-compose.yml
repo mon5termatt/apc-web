@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  apc-web:
+    image: python:3.10-slim
+    working_dir: /app
+    command: bash -c "pip install --no-cache-dir -r requirements.txt && python app.py"
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_RUN_HOST=0.0.0.0
+      - APCUPSD_HOST=${APCUPSD_HOST:-10.0.0.13}
+      - FLASK_ENV=${FLASK_ENV:-production}
+    volumes:
+      - ./:/app
+      - ./ups_history.db:/app/ups_history.db
+    restart: unless-stopped
+    networks:
+      - apc-network
+
+networks:
+  apc-network:
+    driver: bridge 

@@ -1,0 +1,3 @@
+Flask==3.0.2
+apcaccess==0.0.13
+python-dotenv==1.0.1 
