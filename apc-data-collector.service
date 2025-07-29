@@ -1,0 +1,14 @@
+[Unit]
+Description=APC UPS Data Collector
+After=network.target
+Wants=apc-web.service
+
+[Service]
+WorkingDirectory=/root/apc-web
+ExecStart=/usr/bin/python3 /root/apc-web/data_collector.py
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target 

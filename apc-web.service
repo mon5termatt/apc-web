@@ -1,0 +1,16 @@
+[Unit]
+Description=APC Web Flask App
+After=network.target
+
+[Service]
+WorkingDirectory=/root/apc-web
+ExecStart=/usr/bin/python3 /root/apc-web/app.py
+Environment=FLASK_APP=app.py
+Environment=FLASK_RUN_HOST=0.0.0.0
+Environment=APCUPSD_HOST=10.0.0.13
+Environment=FLASK_ENV=production
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

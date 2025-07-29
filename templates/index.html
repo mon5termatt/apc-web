@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPS Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --chart-height: 300px;
+            --card-spacing: 0.75rem;
+        }
+        body {
+            padding: var(--card-spacing);
+        }
+        .row {
+            margin-bottom: var(--card-spacing) !important;
+        }
+        .card {
+            margin-bottom: 0 !important;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        .card-body {
+            padding: 1rem;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-online {
+            background-color: var(--bs-success);
+        }
+        .status-offline {
+            background-color: var(--bs-danger);
+        }
+        .warning {
+            color: var(--bs-warning);
+        }
+        .danger {
+            color: var(--bs-danger);
+        }
+        .success {
+            color: var(--bs-success);
+        }
+        .chart-container {
+            height: var(--chart-height);
+            min-height: 250px;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 250px;
+                min-height: 200px;
+            }
+            
+            .form-select-sm {
+                font-size: 0.875rem;
+                padding: 0.25rem 0.5rem;
+            }
+            
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            /* Ensure chart controls stay side by side */
+            #chartType {
+                min-width: 100px !important;
+                max-width: 120px !important;
+            }
+            
+            #timeRange {
+                min-width: 80px !important;
+                max-width: 100px !important;
+            }
+            
+            /* Compact spacing */
+                    .d-flex.gap-1 > * {
+            margin-right: 0.25rem;
+        }
+        
+        /* URL example links styling */
+        .url-example {
+            color: var(--bs-primary);
+            text-decoration: none;
+            font-family: monospace;
+            font-weight: 500;
+        }
+        
+        .url-example:hover {
+            color: var(--bs-primary);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        }
+        .table-container {
+            height: 200px;
+            overflow-y: auto;
+            margin: -0.5rem;
+            padding: 0.5rem;
+        }
+        .compact-display-4 {
+            font-size: calc(1.475rem + 1.5vw);
+            margin-bottom: 0.5rem;
+        }
+        .progress {
+            height: 0.5rem;
+        }
+        .header-row {
+            margin-bottom: 0.5rem !important;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--bs-border-color);
+            background: none;
+            color: var(--bs-body-color);
+        }
+        
+        /* Dark mode specific styles */
+        [data-bs-theme="dark"] {
+            --bs-body-bg: #1a1d20;
+            --bs-body-color: #e9ecef;
+            --bs-card-bg: #212529;
+            --bs-card-border-color: #2c3237;
+        }
+        [data-bs-theme="dark"] .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
+        }
+        [data-bs-theme="dark"] .table thead {
+            background: var(--bs-card-bg) !important;
+        }
+        [data-bs-theme="dark"] .form-select {
+            background-color: var(--bs-card-bg);
+            color: var(--bs-body-color);
+            border-color: var(--bs-card-border-color);
+        }
+        
+        /* Battery alert warning tape border */
+        .battery-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .battery-alert.active {
+            opacity: 1;
+        }
+        
+        /* Warning tape border effect */
+        .battery-alert::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 8px solid transparent;
+            background: 
+                linear-gradient(90deg, #ff0000 0%, #ff0000 25%, #ffff00 25%, #ffff00 50%, #ff0000 50%, #ff0000 75%, #ffff00 75%, #ffff00 100%) 0 0 / 32px 8px,
+                linear-gradient(90deg, #ff0000 0%, #ff0000 25%, #ffff00 25%, #ffff00 50%, #ff0000 50%, #ff0000 75%, #ffff00 75%, #ffff00 100%) 0 0 / 32px 8px,
+                linear-gradient(0deg, #ff0000 0%, #ff0000 25%, #ffff00 25%, #ffff00 50%, #ff0000 50%, #ff0000 75%, #ffff00 75%, #ffff00 100%) 0 0 / 8px 32px,
+                linear-gradient(0deg, #ff0000 0%, #ff0000 25%, #ffff00 25%, #ffff00 50%, #ff0000 50%, #ff0000 75%, #ffff00 75%, #ffff00 100%) 0 0 / 8px 32px;
+            background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+            background-position: 0 0, 0 calc(100% - 8px), 0 0, calc(100% - 8px) 0;
+            animation: warningTape 1s linear infinite;
+        }
+        
+        @keyframes warningTape {
+            0% {
+                background-position: 0 0, 0 calc(100% - 8px), 0 0, calc(100% - 8px) 0;
+            }
+            100% {
+                background-position: -32px 0, -32px calc(100% - 8px), 0 -32px, calc(100% - 8px) -32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Battery alert overlay -->
+    <div id="batteryAlert" class="battery-alert"></div>
+    
+    <div class="container-fluid p-2">
+        <!-- Header -->
+        <div class="row header-row align-items-center">
+            <div class="col">
+                <div class="d-flex align-items-center">
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-battery-charging"></i>
+                        UPS Monitor
+                        <small class="text-muted" id="upsModel"></small>
+                    </h1>
+                    <div class="ms-auto d-flex align-items-center gap-2">
+                        <button class="theme-toggle" onclick="toggleTheme()">
+                            <i class="bi bi-moon-stars"></i>
+                        </button>
+                        <button class="theme-toggle" type="button" data-bs-toggle="modal" data-bs-target="#urlParamsModal">
+                            <i class="bi bi-info-circle"></i>
+                        </button>
+                        <div id="statusBar" class="d-flex align-items-center">
+                            <div class="status-indicator" id="statusDot"></div>
+                            <span id="statusText" class="h6 mb-0"></span>
+                            <small class="text-muted ms-2" id="timestamp"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Stats -->
+        <div class="row g-2">
+            <!-- Power Stats -->
+            <div class="col-6 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title h6"><i class="bi bi-lightning-charge"></i> Power</h5>
+                        <div class="d-flex align-items-center mb-3">
+                            <h2 id="currentWatts" class="display-4 mb-0 me-3">0<small class="text-muted" style="font-size: 40%;">W</small></h2>
+                            <h3 id="currentAmps" class="h2 mb-0 text-muted">0<small class="text-muted" style="font-size: 50%;">A</small></h3>
+                        </div>
+                        <div class="mb-2">
+                            <label class="small">Load</label>
+                            <div class="progress">
+                                <div id="loadProgress" class="progress-bar" role="progressbar"></div>
+                            </div>
+                        </div>
+                        <p id="powerStats" class="card-text small"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Battery Stats -->
+            <div class="col-6 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title h6"><i class="bi bi-battery"></i> Battery</h5>
+                        <h2 id="batteryPercent" class="display-4 mb-3">0<small class="text-muted" style="font-size: 40%;">%</small></h2>
+                        <div class="mb-2">
+                            <label class="small">Charge</label>
+                            <div class="progress">
+                                <div id="batteryProgress" class="progress-bar bg-success" role="progressbar"></div>
+                            </div>
+                        </div>
+                        <p id="batteryStats" class="card-text small"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Power Cost & Historical Stats -->
+            <div class="col-6 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title h6"><i class="bi bi-currency-dollar"></i> Power Cost & Usage</h5>
+                        <div class="row">
+                            <div class="col-12 col-lg-6">
+                                <small class="text-muted">Current</small>
+                                <h2 class="display-4 mb-2">$<span id="currentCost">0.00</span><small class="text-muted" style="font-size: 40%;">/hr</small></h2>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">Avg/hr</small>
+                                        <h5 id="avgCostHourValue" class="mb-1">$0.000</h5>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Avg/day</small>
+                                        <h5 id="avgCostDayValue" class="mb-1">$0.00</h5>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Avg/mo</small>
+                                        <h5 id="avgCostMonthValue" class="mb-1">$0.00</h5>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Est/yr</small>
+                                        <h5 id="avgCostYearValue" class="mb-1">$0.00</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="border-top mt-2 pt-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted">Historical Usage</small>
+                                        <small class="text-muted" id="statsAnalysisPeriod">Based on last 7 days</small>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small">Avg: <span id="avgWattsValue">0W</span></span>
+                                        <span class="small">Load: <span id="avgLoadValue">0%</span></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small">Min: <span id="minWattsValue">0W</span></span>
+                                        <span class="small">Max: <span id="maxWattsValue">0W</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-2">
+            <!-- Left Column: Stats Grid -->
+            <div class="col-md-6">
+                <div class="row g-2">
+                    <!-- UPS Info -->
+                    <div class="col-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title h6"><i class="bi bi-info-circle"></i> UPS Information</h5>
+                                <p id="upsInfo" class="card-text small"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transfer Stats -->
+                    <div class="col-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title h6"><i class="bi bi-arrow-repeat"></i> Transfer Statistics</h5>
+                                <p id="transferStats" class="card-text small"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temperature -->
+                    <div class="col-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title h6"><i class="bi bi-thermometer"></i> Temperature</h5>
+                                <div class="row align-items-center">
+                                    <div class="col-5">
+                                        <h2 id="temperature" class="display-4 mb-0"></h2>
+                                    </div>
+                                    <div class="col-7 text-end">
+                                        <p id="tempStats" class="card-text small mb-0"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Uptime Stats -->
+                    <div class="col-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title h6"><i class="bi bi-clock-history"></i> System Uptime</h5>
+                                <div class="text-center">
+                                    <h3 id="totalRuntime" class="mb-2">--</h3>
+                                    <small class="text-muted">Since last event</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column: Power Events -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column p-3">
+                        <h5 class="card-title h6 mb-2">Power Events</h5>
+                        <div class="table-container flex-grow-1">
+                            <table class="table table-hover table-striped table-sm mb-0" style="min-width: 600px;">
+                                <thead style="position: sticky; top: 0; z-index: 1;">
+                                    <tr>
+                                        <th style="width: 20%">Time</th>
+                                        <th style="width: 30%">Event</th>
+                                        <th style="width: 20%">Duration</th>
+                                        <th style="width: 30%">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eventsList">
+                                    <!-- Events will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historical Data -->
+        <div class="row g-2">
+            <div class="col-12">
+                <div class="card" id="chartCard">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title h6 mb-0">Historical Data</h5>
+                            <div class="d-flex gap-1 align-items-center">
+                                <select class="form-select form-select-sm" id="chartType" style="width: auto; min-width: 120px;">
+                                    <option value="load">Load, Power & Current</option>
+                                    <option value="battery">Battery Level & Runtime</option>
+                                    <option value="temperature">Temperature</option>
+                                    <option value="voltage">Input/Output Voltage</option>
+                                    <option value="cost">Power Cost</option>
+                                    <option value="amps">Current Draw</option>
+                                </select>
+                                <select class="form-select form-select-sm" id="timeRange" style="width: auto; min-width: 100px;">
+                                    <option value="1" selected>Last Hour</option>
+                                    <option value="24">Last 24 Hours</option>
+                                    <option value="72">Last 3 Days</option>
+                                    <option value="168">Last 7 Days</option>
+                                </select>
+                                <button class="btn btn-outline-primary btn-sm" id="cycleBtn" type="button">
+                                    <i class="bi bi-play-circle"></i> <span id="cycleBtnText" class="d-none d-sm-inline">Start Cycle</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="historyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- URL Parameters Info Modal -->
+    <div class="modal fade" id="urlParamsModal" tabindex="-1" aria-labelledby="urlParamsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="urlParamsModalLabel">
+                        <i class="bi bi-link-45deg"></i> URL Parameters
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Add these parameters to the URL to automatically configure the display:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Basic Parameters</h6>
+                            <ul class="list-unstyled">
+                                <li><a href="#" class="url-example" data-params="cycle">?cycle</a> - Auto-start chart cycling</li>
+                                <li><a href="#" class="url-example" data-params="fullscreen">?fullscreen</a> - Enter fullscreen mode</li>
+                                <li><a href="#" class="url-example" data-params="cycle&fullscreen">?cycle&fullscreen</a> - Start cycling in fullscreen</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Chart Types</h6>
+                            <ul class="list-unstyled">
+                                <li><a href="#" class="url-example" data-params="chart=load">?chart=load</a> - Load, Power & Current</li>
+                                <li><a href="#" class="url-example" data-params="chart=battery">?chart=battery</a> - Battery Level & Runtime</li>
+                                <li><a href="#" class="url-example" data-params="chart=temperature">?chart=temperature</a> - Temperature</li>
+                                <li><a href="#" class="url-example" data-params="chart=voltage">?chart=voltage</a> - Input/Output Voltage</li>
+                                <li><a href="#" class="url-example" data-params="chart=cost">?chart=cost</a> - Power Cost</li>
+                                <li><a href="#" class="url-example" data-params="chart=amps">?chart=amps</a> - Current Draw</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Time Ranges</h6>
+                            <ul class="list-unstyled">
+                                <li><a href="#" class="url-example" data-params="hours=1">?hours=1</a> - Last Hour</li>
+                                <li><a href="#" class="url-example" data-params="hours=24">?hours=24</a> - Last 24 Hours</li>
+                                <li><a href="#" class="url-example" data-params="hours=72">?hours=72</a> - Last 3 Days</li>
+                                <li><a href="#" class="url-example" data-params="hours=168">?hours=168</a> - Last 7 Days</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Examples</h6>
+                            <ul class="list-unstyled">
+                                <li><a href="#" class="url-example" data-params="chart=amps&cycle">?chart=amps&cycle</a> - Amps chart with cycling</li>
+                                <li><a href="#" class="url-example" data-params="chart=load&hours=24&cycle">?chart=load&hours=24&cycle</a> - 24h load data with cycling</li>
+                                <li><a href="#" class="url-example" data-params="cycle&fullscreen">?cycle&fullscreen</a> - Fullscreen cycling mode</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-lightbulb"></i>
+                        <strong>Tip:</strong> You can bookmark these URLs or share them to automatically configure the display exactly how you want it!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script>
+        let historyChart = null;
+        let chartCycleInterval = null;
+        let manualCycleActive = false;
+        let lastKnownData = null;
+        let consecutiveFailures = 0;
+        const CYCLE_INTERVAL = 5000; // 5 seconds per chart
+        const chartTypes = ['load', 'battery', 'temperature', 'voltage', 'cost', 'amps'];
+
+        // Chart types in order for cycling
+        
+        // Dark mode persistence
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            
+            // Update toggle button icon
+            const icon = document.querySelector('.theme-toggle i');
+            icon.className = savedTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+        }
+
+        // Track user activity
+        function updateUserActivity() {
+            lastUserActivity = Date.now();
+            stopChartCycle();
+        }
+
+        // Start automatic chart cycling
+        function startChartCycle() {
+            if (chartCycleInterval) return;
+            
+            let currentIndex = 0;
+            chartCycleInterval = setInterval(() => {
+                const chartTypeSelect = document.getElementById('chartType');
+                chartTypeSelect.value = chartTypes[currentIndex];
+                updateHistoricalData();
+                
+                currentIndex = (currentIndex + 1) % chartTypes.length;
+            }, CYCLE_INTERVAL);
+        }
+
+        // Stop automatic chart cycling
+        function stopChartCycle() {
+            if (chartCycleInterval) {
+                clearInterval(chartCycleInterval);
+                chartCycleInterval = null;
+            }
+        }
+
+        // Check for idle state
+        function checkIdleState() {
+            const now = Date.now();
+            if (now - lastUserActivity > IDLE_TIMEOUT) {
+                startChartCycle();
+            } else {
+                stopChartCycle();
+            }
+        }
+
+        // Dark mode toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-bs-theme') === 'dark';
+            const newTheme = isDark ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', newTheme);
+            
+            // Save to localStorage
+            localStorage.setItem('theme', newTheme);
+            
+            // Update toggle button icon
+            const icon = document.querySelector('.theme-toggle i');
+            icon.className = isDark ? 'bi bi-sun' : 'bi bi-moon-stars';
+            
+            // Update charts if they exist
+            if (historyChart) {
+                updateChartTheme(historyChart);
+            }
+        }
+
+        function updateChartTheme(chart) {
+            const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            const textColor = isDark ? '#e9ecef' : '#212529';
+            
+            chart.options.plugins.title.color = textColor;
+            chart.options.scales.x.ticks.color = textColor;
+            chart.options.scales.y.ticks.color = textColor;
+            if (chart.options.scales.y1) {
+                chart.options.scales.y1.ticks.color = textColor;
+            }
+            chart.update('none'); // Prevent animation
+        }
+
+        // Chart configurations for different types
+        const chartConfigs = {
+            load: {
+                title: 'Load, Power & Current',
+                datasets: [
+                    {
+                        label: 'Load %',
+                        borderColor: '#0d6efd',
+                        yAxisID: 'y',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Power Usage (W)',
+                        borderColor: '#198754',
+                        yAxisID: 'y1',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Current (A)',
+                        borderColor: '#dc3545',
+                        yAxisID: 'y2',
+                        tension: 0.1
+                    }
+                ],
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Load %' },
+                        beginAtZero: true,
+                        max: 100
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Watts' },
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Amps' },
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            },
+            battery: {
+                title: 'Battery Level & Runtime',
+                datasets: [
+                    {
+                        label: 'Charge %',
+                        borderColor: '#0d6efd',
+                        yAxisID: 'y',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Runtime (min)',
+                        borderColor: '#198754',
+                        yAxisID: 'y1',
+                        tension: 0.1
+                    }
+                ],
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Charge %' },
+                        beginAtZero: true,
+                        max: 100
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Minutes' },
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            },
+
+            temperature: {
+                title: 'Temperature',
+                datasets: [
+                    {
+                        label: 'Internal Temperature (°C)',
+                        borderColor: '#dc3545',
+                        tension: 0.1
+                    }
+                ],
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        title: { display: true, text: '°C' },
+                        beginAtZero: true
+                    }
+                }
+            },
+            voltage: {
+                title: 'Voltage Stability',
+                datasets: [
+                    {
+                        label: 'Input Voltage',
+                        borderColor: '#0d6efd',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Output Voltage',
+                        borderColor: '#198754',
+                        tension: 0.1
+                    }
+                ],
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        title: { display: true, text: 'Volts' },
+                        beginAtZero: false
+                    }
+                }
+            },
+            cost: {
+                title: 'Power Cost',
+                datasets: [
+                    {
+                        label: 'Cost per Hour ($)',
+                        borderColor: '#198754',
+                        yAxisID: 'y',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Cost per Day ($)',
+                        borderColor: '#0d6efd',
+                        yAxisID: 'y1',
+                        tension: 0.1
+                    }
+                ],
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: '$ per Hour' },
+                        beginAtZero: true
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: '$ per Day' },
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            },
+            amps: {
+                title: 'Current Draw',
+                datasets: [
+                    {
+                        label: 'Current (A)',
+                        borderColor: '#dc3545',
+                        tension: 0.1
+                    }
+                ],
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        title: { display: true, text: 'Amps' },
+                        beginAtZero: true
+                    }
+                }
+            }
+        };
+
+        function createChart(type) {
+            const config = chartConfigs[type];
+            const ctx = document.getElementById('historyChart');
+            
+            if (historyChart) {
+                historyChart.destroy();
+            }
+
+            historyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: config.datasets.map(ds => ({
+                        ...ds,
+                        data: []
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0 // Disable animations
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: config.title
+                        }
+                    },
+                    scales: config.scales
+                }
+            });
+
+            // Apply current theme
+            updateChartTheme(historyChart);
+
+            return historyChart;
+        }
+
+        function updateHistoricalData() {
+            const hours = document.getElementById('timeRange').value;
+            const type = document.getElementById('chartType').value;
+            
+            fetch(`/api/history?hours=${hours}`)
+                .then(response => response.json())
+                .then(data => {
+                    const chart = createChart(type);
+                    const labels = data.map(r => moment(r.timestamp).format('MM/DD HH:mm'));
+                    
+                    switch(type) {
+                        case 'load':
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data.map(r => parseFloat(r.data.LOADPCT));
+                            chart.data.datasets[1].data = data.map(r => parseFloat(r.data.WATTS));
+                            chart.data.datasets[2].data = data.map(r => parseFloat(r.data.AMPS || 0));
+                            break;
+                        case 'battery':
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data.map(r => parseFloat(r.data.BCHARGE));
+                            chart.data.datasets[1].data = data.map(r => parseFloat(r.data.TIMELEFT));
+                            break;
+
+                        case 'temperature':
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data.map(r => parseFloat(r.data.ITEMP));
+                            break;
+                        case 'voltage':
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data.map(r => parseFloat(r.data.LINEV));
+                            chart.data.datasets[1].data = data.map(r => parseFloat(r.data.OUTPUTV));
+                            break;
+                        case 'cost':
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data.map(r => parseFloat(r.data.COST_HOUR));
+                            chart.data.datasets[1].data = data.map(r => parseFloat(r.data.COST_DAILY));
+                            break;
+                        case 'amps':
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data.map(r => parseFloat(r.data.AMPS || 0));
+                            break;
+                    }
+                    
+                    chart.update('none'); // Prevent animation
+                })
+                .catch(error => console.error('Error fetching historical data:', error));
+        }
+
+        function updatePowerEvents() {
+            fetch('/api/events')
+                .then(response => response.json())
+                .then(events => {
+                    const tbody = document.getElementById('eventsList');
+                    tbody.innerHTML = '';
+                    
+                    events.forEach(event => {
+                        const row = document.createElement('tr');
+                        const time = moment(event.timestamp).format('YYYY-MM-DD HH:mm:ss');
+                        const status = event.data.STATUS;
+                        const duration = event.data.TONBATT_FORMATTED || 'N/A';
+                        const details = `Battery: ${event.data.BCHARGE}%, Runtime: ${event.data.TIMELEFT}min`;
+                        
+                        row.innerHTML = `
+                            <td>${time}</td>
+                            <td>${status}</td>
+                            <td>${duration}</td>
+                            <td>${details}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Error fetching power events:', error));
+        }
+
+        function updateUI(data) {
+            // Update status
+            const isOnline = (data.STATUS || '').includes('ONLINE');
+            const isOnBattery = (data.STATUS || '').includes('ONBATT');
+            
+            // Update battery alert overlay
+            const batteryAlert = document.getElementById('batteryAlert');
+            if (isOnBattery) {
+                batteryAlert.classList.add('active');
+            } else {
+                batteryAlert.classList.remove('active');
+            }
+            
+            document.getElementById('statusDot').className = 'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
+            document.getElementById('statusText').textContent = data.STATUS || 'Unknown';
+            document.getElementById('statusText').className = 'h5 mb-0 ' + (isOnline ? 'success' : 'danger');
+            document.getElementById('timestamp').textContent = data.TIMESTAMP || 'Unknown';
+
+            // Update model
+            document.getElementById('upsModel').textContent = data.MODEL || '';
+
+            // Update power stats with prominent wattage and amperage display
+            const loadPercent = parseFloat(data.LOADPCT || '0');
+            const watts = parseFloat(data.WATTS || '0');
+            const amps = parseFloat(data.AMPS || '0');
+            document.getElementById('currentWatts').innerHTML = `${watts.toFixed(1)}<small class="text-muted" style="font-size: 40%;">W</small>`;
+            document.getElementById('currentAmps').innerHTML = `${amps.toFixed(2)}<small class="text-muted" style="font-size: 50%;">A</small>`;
+            document.getElementById('loadProgress').style.width = `${loadPercent}%`;
+            document.getElementById('loadProgress').className = `progress-bar ${loadPercent > 80 ? 'bg-danger' : loadPercent > 60 ? 'bg-warning' : 'bg-primary'}`;
+            document.getElementById('powerStats').innerHTML = `
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Load:</strong> ${loadPercent}% of ${data.UPS_WATTS || 'N/A'}W<br>
+                        <strong>Input:</strong> ${data.LINEV || 'N/A'}V<br>
+                        <strong>Output:</strong> ${data.OUTPUTV || 'N/A'}V
+                    </div>
+                    <div class="col-6">
+                        <strong>Frequency:</strong> ${data.LINEFREQ || 'N/A'}Hz<br>
+                        <strong>Current:</strong> ${amps.toFixed(2)}A @ ${data.VOLTAGE || data.LINEV || 'N/A'}V
+                    </div>
+                </div>
+            `;
+
+            // Update current hourly cost
+            document.getElementById('currentCost').textContent = data.COST_HOUR || '0.00';
+
+            // Update battery stats
+            const batteryPercent = parseFloat(data.BCHARGE || '0');
+            document.getElementById('batteryPercent').innerHTML = `${batteryPercent.toFixed(0)}<small class="text-muted" style="font-size: 40%;">%</small>`;
+            document.getElementById('batteryProgress').style.width = `${batteryPercent}%`;
+            document.getElementById('batteryProgress').className = `progress-bar ${batteryPercent < 30 ? 'bg-danger' : batteryPercent < 50 ? 'bg-warning' : 'bg-success'}`;
+            document.getElementById('batteryStats').innerHTML = `
+                <strong>Runtime:</strong> ${data.TIMELEFT || 'N/A'} minutes<br>
+                <strong>Battery Voltage:</strong> ${data.BATTV || 'N/A'}V<br>
+                <strong>Last Battery Change:</strong> ${data.BATTDATE || 'N/A'}
+            `;
+
+            // Update temperature
+            const temp = parseFloat(data.ITEMP || '0');
+            document.getElementById('temperature').innerHTML = `${temp}<small class="text-muted" style="font-size: 40%;">°C</small>`;
+            document.getElementById('temperature').className = `display-4 mb-3 ${temp > 40 ? 'danger' : temp > 35 ? 'warning' : 'success'}`;
+            document.getElementById('tempStats').innerHTML = `
+                Status: ${temp > 40 ? 'Critical' : temp > 35 ? 'Warning' : 'Normal'}<br>
+                Recommended: Below 35°C
+            `;
+
+            // Update UPS info
+            document.getElementById('upsInfo').innerHTML = `
+                <strong>Model:</strong> ${data.MODEL || 'N/A'}<br>
+                <strong>Serial:</strong> ${data.SERIALNO || 'N/A'}<br>
+                <strong>Firmware:</strong> ${data.FIRMWARE || 'N/A'}<br>
+                <strong>Rating:</strong> ${data.UPS_VA || 'N/A'}VA / ${data.UPS_WATTS || 'N/A'}W<br>
+                <strong>Power Factor:</strong> ${data.POWER_FACTOR || 'N/A'}
+            `;
+
+            // Update transfer stats
+            document.getElementById('transferStats').innerHTML = `
+                <strong>Transfer Count:</strong> ${data.NUMXFERS || '0'}<br>
+                <strong>Last Transfer:</strong> ${data.LASTXFER || 'None'}<br>
+                <strong>Time on Battery:</strong> ${data.TONBATT_FORMATTED || 'None'}<br>
+                <strong>Cumulative Time:</strong> ${data.CUMONBATT_FORMATTED || 'None'}
+            `;
+
+            // Update runtime history
+            const startTime = data.STARTTIME ? moment(data.STARTTIME, 'YYYY-MM-DD HH:mm:ss Z') : null;
+            if (startTime && startTime.isValid()) {
+                // Update runtime duration
+                const duration = moment.duration(moment().diff(startTime));
+                const days = Math.floor(duration.asDays());
+                const hours = duration.hours();
+                const minutes = duration.minutes();
+                
+                let runtimeText = '';
+                if (days > 0) {
+                    runtimeText = `${days}d ${hours}h ${minutes}m`;
+                } else {
+                    runtimeText = `${hours}h ${minutes}m`;
+                }
+                
+                document.getElementById('totalRuntime').textContent = runtimeText;
+            } else {
+                document.getElementById('totalRuntime').textContent = 'Unknown';
+            }
+
+            // If we're showing real-time data in the chart, update it
+            if (historyChart && document.getElementById('timeRange').value === '1') {
+                updateHistoricalData();
+            }
+        }
+
+        function updateClientTime() {
+            const now = new Date();
+            // Format: YYYY-MM-DD HH:mm:ss
+            const formatted = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('timestamp').textContent = formatted;
+        }
+
+        // Fetch data every 5 seconds
+        function fetchData() {
+            fetch('/api/status')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Check if we got valid data (either STATUS or error field)
+                    if (data && data.STATUS && !data.error) {
+                        lastKnownData = data;
+                        consecutiveFailures = 0;
+                        saveLastKnownData(data);
+                        updateUI(data);
+                        
+                        // Reset status indicators to normal
+                        document.getElementById('statusDot').className = 'status-indicator status-online';
+                        document.getElementById('statusText').className = 'h5 mb-0';
+                    } else if (data && data.error) {
+                        // API returned an error response
+                        throw new Error(data.error);
+                    } else {
+                        throw new Error('Invalid data received');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching UPS status:', error);
+                    consecutiveFailures++;
+                    
+                    // Use last known data if available and failures are reasonable
+                    if (lastKnownData && consecutiveFailures <= 10) {
+                        console.log('Using last known data due to API failure');
+                        updateUI(lastKnownData);
+                        
+                        // Update status to show we're using cached data
+                        document.getElementById('statusText').textContent = lastKnownData.STATUS + ' (cached)';
+                        document.getElementById('statusText').className = 'h5 mb-0 warning';
+                        document.getElementById('statusDot').className = 'status-indicator status-online';
+                    } else if (consecutiveFailures > 10) {
+                        // After 10 failures, show offline status
+                        document.getElementById('statusDot').className = 'status-indicator status-offline';
+                        document.getElementById('statusText').textContent = 'Offline';
+                        document.getElementById('statusText').className = 'h5 mb-0 danger';
+                        console.log('Too many consecutive failures, showing offline status');
+                        
+                        // Clear the UI to show offline state
+                        clearUI();
+                    }
+                });
+        }
+        
+        function clearUI() {
+            // Clear all metric displays when offline
+            const metricElements = document.querySelectorAll('[id$="Value"], [id$="Percent"], [id$="Watts"], [id$="Amps"], [id$="Voltage"], [id$="Cost"]');
+            metricElements.forEach(element => {
+                if (element.tagName === 'SPAN' || element.tagName === 'DIV') {
+                    element.textContent = '--';
+                }
+            });
+        }
+
+        // Load last known data from localStorage on page load
+        function loadLastKnownData() {
+            try {
+                const saved = localStorage.getItem('lastKnownUPSData');
+                if (saved) {
+                    lastKnownData = JSON.parse(saved);
+                    console.log('Loaded last known data from localStorage');
+                }
+            } catch (error) {
+                console.error('Error loading last known data:', error);
+            }
+        }
+
+        // Save last known data to localStorage
+        function saveLastKnownData(data) {
+            try {
+                localStorage.setItem('lastKnownUPSData', JSON.stringify(data));
+            } catch (error) {
+                console.error('Error saving last known data:', error);
+            }
+        }
+
+        // Load saved data on page load
+        loadLastKnownData();
+
+        // Fetch power statistics
+        function fetchPowerStats() {
+            fetch('/api/power_stats?days=7')
+                .then(response => response.json())
+                .then(stats => {
+                    if (stats.error) {
+                        console.error('Error fetching power stats:', stats.error);
+                        return;
+                    }
+                    
+                    // Update historical power usage
+                    document.getElementById('avgLoadValue').textContent = stats.avg_load + '%';
+                    document.getElementById('avgWattsValue').textContent = stats.avg_watts + 'W';
+                    document.getElementById('minWattsValue').textContent = stats.min_watts + 'W';
+                    document.getElementById('maxWattsValue').textContent = stats.max_watts + 'W';
+                    
+                    // Update historical cost estimates
+                    document.getElementById('avgCostHourValue').textContent = '$' + stats.cost_per_hour.toFixed(3);
+                    document.getElementById('avgCostDayValue').textContent = '$' + stats.cost_per_day.toFixed(2);
+                    document.getElementById('avgCostMonthValue').textContent = '$' + stats.cost_per_month.toFixed(2);
+                    document.getElementById('avgCostYearValue').textContent = '$' + stats.cost_per_year.toFixed(2);
+                    
+                    // Update analysis period
+                    document.getElementById('statsAnalysisPeriod').textContent = `Based on last ${stats.days_analyzed} days`;
+                })
+                .catch(error => {
+                    console.error('Error fetching power stats:', error);
+                });
+        }
+
+        // Initial fetch
+        fetchData();
+        fetchPowerStats();
+
+        // Update every 5 seconds
+        setInterval(fetchData, 5000);
+        
+        // Update power stats every minute
+        setInterval(fetchPowerStats, 60000);
+
+        // Update historical data every minute
+        setInterval(() => {
+            if (historyChart) {
+                updateHistoricalData();
+            }
+        }, 60000);
+
+        // Event listeners for chart type and time range changes
+        document.getElementById('chartType').addEventListener('change', () => {
+            updateHistoricalData();
+        });
+        document.getElementById('timeRange').addEventListener('change', () => {
+            updateHistoricalData();
+        });
+
+        function setCycleButtonState(active) {
+            const btn = document.getElementById('cycleBtn');
+            const icon = btn.querySelector('i');
+            const text = document.getElementById('cycleBtnText');
+            if (active) {
+                icon.className = 'bi bi-stop-circle';
+                text.textContent = 'Stop Cycle';
+            } else {
+                icon.className = 'bi bi-play-circle';
+                text.textContent = 'Start Cycle';
+            }
+        }
+
+        function enterChartFullscreen() {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) docEl.requestFullscreen();
+            else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+            else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+        }
+
+        function exitChartFullscreen() {
+            // No-op: user must exit fullscreen manually
+        }
+
+        function startManualCycle() {
+            manualCycleActive = true;
+            setCycleButtonState(true);
+            enterChartFullscreen();
+            let currentIndex = 0;
+            // Immediately switch to the first chart
+            const chartTypeSelect = document.getElementById('chartType');
+            chartTypeSelect.value = chartTypes[currentIndex];
+            updateHistoricalData();
+            currentIndex = (currentIndex + 1) % chartTypes.length;
+            chartCycleInterval = setInterval(() => {
+                chartTypeSelect.value = chartTypes[currentIndex];
+                updateHistoricalData();
+                currentIndex = (currentIndex + 1) % chartTypes.length;
+            }, CYCLE_INTERVAL);
+        }
+
+        function stopManualCycle() {
+            manualCycleActive = false;
+            setCycleButtonState(false);
+            if (chartCycleInterval) {
+                clearInterval(chartCycleInterval);
+                chartCycleInterval = null;
+            }
+            // Do not exit fullscreen automatically
+        }
+
+        document.getElementById('cycleBtn').addEventListener('click', function() {
+            if (!manualCycleActive) {
+                startManualCycle();
+            } else {
+                stopManualCycle();
+            }
+        });
+
+        // Exit cycle/fullscreen on user activity
+        document.addEventListener('fullscreenchange', function() {
+            // No longer auto-exit cycling on fullscreen exit
+        });
+
+        // Check for URL parameters
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Auto-start cycling
+            if (urlParams.has('cycle')) {
+                console.log('Auto-starting chart cycle from URL parameter');
+                startManualCycle();
+            }
+            
+            // Set specific chart type
+            if (urlParams.has('chart')) {
+                const chartType = urlParams.get('chart');
+                if (chartTypes.includes(chartType)) {
+                    document.getElementById('chartType').value = chartType;
+                    updateHistoricalData();
+                }
+            }
+            
+            // Set specific time range
+            if (urlParams.has('hours')) {
+                const hours = urlParams.get('hours');
+                const timeRangeSelect = document.getElementById('timeRange');
+                const options = ['1', '24', '72', '168'];
+                if (options.includes(hours)) {
+                    timeRangeSelect.value = hours;
+                    updateHistoricalData();
+                }
+            }
+            
+            // Auto-enter fullscreen
+            if (urlParams.has('fullscreen')) {
+                setTimeout(() => {
+                    enterChartFullscreen();
+                }, 1000); // Delay to ensure page is loaded
+            }
+        }
+
+        // Initialize theme on load
+        initTheme();
+
+        // Check URL parameters
+        checkUrlParams();
+
+        // Initial historical data load
+        updateHistoricalData();
+        updatePowerEvents();
+
+        // Check idle state every 10 seconds
+        setInterval(checkIdleState, 10000);
+
+        // Handle clickable URL examples
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('url-example')) {
+                    e.preventDefault();
+                    const params = e.target.getAttribute('data-params');
+                    const currentUrl = window.location.origin + window.location.pathname;
+                    const newUrl = currentUrl + '?' + params;
+                    window.location.href = newUrl;
+                }
+            });
+        });
+
+        // Update power events every minute
+        setInterval(updatePowerEvents, 60000);
+        updateClientTime();
+    </script>
+</body>
+</html> 
