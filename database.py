@@ -20,6 +20,14 @@ def init_db():
     # Create index on timestamp for faster queries
     c.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON ups_readings(timestamp)')
     
+    # Create table for acknowledged events
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS acknowledged_events (
+            event_timestamp DATETIME PRIMARY KEY,
+            acknowledged_at DATETIME NOT NULL
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -79,6 +87,7 @@ def get_power_events(days=7):
     cutoff = (datetime.now() - timedelta(days=days)).isoformat()
     
     # Get readings where NUMXFERS changed or STATUS contains "ONBATT"
+    # Exclude acknowledged events
     c.execute('''
         WITH numbered_rows AS (
             SELECT 
@@ -90,11 +99,15 @@ def get_power_events(days=7):
             FROM ups_readings 
             WHERE timestamp > ?
         )
-        SELECT timestamp, data
-        FROM numbered_rows
-        WHERE (curr_transfers != prev_transfers AND prev_transfers IS NOT NULL)
-           OR status LIKE '%ONBATT%'
-        ORDER BY timestamp
+        SELECT r.timestamp, r.data
+        FROM numbered_rows r
+        LEFT JOIN acknowledged_events a ON r.timestamp = a.event_timestamp
+        WHERE a.event_timestamp IS NULL
+        AND (
+            (r.curr_transfers != r.prev_transfers AND r.prev_transfers IS NOT NULL)
+            OR r.status LIKE '%ONBATT%'
+        )
+        ORDER BY r.timestamp
     ''', (cutoff,))
     
     events = [
@@ -106,7 +119,7 @@ def get_power_events(days=7):
     ]
     
     conn.close()
-    return events 
+    return events
 
 def get_power_statistics(days=7):
     """Get power usage statistics from historical data."""
@@ -180,4 +193,28 @@ def get_power_statistics(days=7):
         }
     
     conn.close()
-    return stats 
+    return stats
+
+def clear_power_events():
+    """Mark all current power events as acknowledged."""
+    conn = sqlite3.connect('ups_history.db')
+    c = conn.cursor()
+    
+    try:
+        # Get all unacknowledged events
+        events = get_power_events(days=7)  # Get recent events
+        now = datetime.now().isoformat()
+        
+        # Mark them as acknowledged
+        c.executemany(
+            'INSERT OR IGNORE INTO acknowledged_events (event_timestamp, acknowledged_at) VALUES (?, ?)',
+            [(event['timestamp'], now) for event in events]
+        )
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error acknowledging power events: {e}")
+        return False
+    finally:
+        conn.close() 

@@ -348,6 +348,30 @@ def health():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+@app.route('/api/events/acknowledge', methods=['POST'])
+def acknowledge_events():
+    """Mark all power events as read."""
+    try:
+        if database.clear_power_events():
+            return jsonify({
+                'status': 'success',
+                'message': 'Power events cleared successfully',
+                'timestamp': datetime.now().isoformat()
+            }), 200
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to clear power events',
+                'timestamp': datetime.now().isoformat()
+            }), 500
+    except Exception as e:
+        app.logger.error(f"Error clearing power events: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to clear power events: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')

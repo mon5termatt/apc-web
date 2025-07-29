@@ -102,7 +102,7 @@
         }
         }
         .table-container {
-            height: 200px;
+            height: 273px; /* This weird ass alignment bullshit. */
             overflow-y: auto;
             margin: -0.5rem;
             padding: 0.5rem;
@@ -375,10 +375,15 @@
             
             <!-- Right Column: Power Events -->
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-body d-flex flex-column p-3">
-                        <h5 class="card-title h6 mb-2">Power Events</h5>
-                        <div class="table-container flex-grow-1">
+                <div class="card">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title h6 mb-0">Power Events</h5>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="acknowledgeEvents()">
+                                <i class="bi bi-check2-all"></i> Mark All as Read
+                            </button>
+                        </div>
+                        <div class="table-container">
                             <table class="table table-hover table-striped table-sm mb-0" style="min-width: 600px;">
                                 <thead style="position: sticky; top: 0; z-index: 1;">
                                     <tr>
@@ -883,12 +888,53 @@
                 .catch(error => console.error('Error fetching historical data:', error));
         }
 
+        function acknowledgeEvents() {
+            if (!confirm('Mark all power events as read?')) {
+                return;
+            }
+            
+            fetch('/api/events/acknowledge', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to acknowledge events');
+                }
+                // Clear the events table
+                document.getElementById('eventsList').innerHTML = '';
+                // Show success message
+                const tbody = document.getElementById('eventsList');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="4" class="text-center text-muted">
+                        <i class="bi bi-info-circle me-1"></i>No unread power events
+                    </td>
+                `;
+                tbody.appendChild(row);
+            })
+            .catch(error => {
+                console.error('Error acknowledging power events:', error);
+                alert('Failed to mark events as read. Please try again.');
+            });
+        }
+
         function updatePowerEvents() {
             fetch('/api/events')
                 .then(response => response.json())
                 .then(events => {
                     const tbody = document.getElementById('eventsList');
                     tbody.innerHTML = '';
+                    
+                    if (events.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td colspan="4" class="text-center text-muted">
+                                <i class="bi bi-info-circle me-1"></i>No power events recorded
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                        return;
+                    }
                     
                     events.forEach(event => {
                         const row = document.createElement('tr');
