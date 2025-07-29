@@ -197,26 +197,30 @@
     
     <div class="container-fluid p-2">
         <!-- Header -->
-        <div class="row header-row align-items-center">
-            <div class="col">
-                <div class="d-flex align-items-center">
-                    <h1 class="h3 mb-0">
+        <div class="row header-row align-items-center g-2">
+            <div class="col-12 col-sm">
+                <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center mb-2 mb-sm-0">
+                    <h1 class="h3 mb-2 mb-sm-0">
                         <i class="bi bi-battery-charging"></i>
                         UPS Monitor
                         <small class="text-muted" id="upsModel"></small>
                     </h1>
-                    <div class="ms-auto d-flex align-items-center gap-2">
+                </div>
+            </div>
+            <div class="col-12 col-sm-auto">
+                <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2">
+                    <div class="d-flex gap-2">
                         <button class="theme-toggle" onclick="toggleTheme()">
                             <i class="bi bi-moon-stars"></i>
                         </button>
                         <button class="theme-toggle" type="button" data-bs-toggle="modal" data-bs-target="#urlParamsModal">
                             <i class="bi bi-info-circle"></i>
                         </button>
-                        <div id="statusBar" class="d-flex align-items-center">
-                            <div class="status-indicator" id="statusDot"></div>
-                            <span id="statusText" class="h6 mb-0"></span>
-                            <small class="text-muted ms-2" id="timestamp"></small>
-                        </div>
+                    </div>
+                    <div id="statusBar" class="d-flex align-items-center">
+                        <div class="status-indicator" id="statusDot"></div>
+                        <span id="statusText" class="h6 mb-0"></span>
+                        <small class="text-muted ms-2" id="timestamp"></small>
                     </div>
                 </div>
             </div>
@@ -225,7 +229,7 @@
         <!-- Main Stats -->
         <div class="row g-2">
             <!-- Power Stats -->
-            <div class="col-6 col-md-3">
+            <div class="col-12 col-md-3">
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title h6"><i class="bi bi-lightning-charge"></i> Power</h5>
@@ -245,7 +249,7 @@
             </div>
 
             <!-- Battery Stats -->
-            <div class="col-6 col-md-3">
+            <div class="col-12 col-md-3">
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title h6"><i class="bi bi-battery"></i> Battery</h5>
@@ -262,7 +266,7 @@
             </div>
 
             <!-- Power Cost & Historical Stats -->
-            <div class="col-6 col-md-6">
+            <div class="col-12 col-md-6">
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title h6"><i class="bi bi-currency-dollar"></i> Power Cost & Usage</h5>
@@ -272,20 +276,20 @@
                                 <h2 class="display-4 mb-2">$<span id="currentCost">0.00</span><small class="text-muted" style="font-size: 40%;">/hr</small></h2>
                             </div>
                             <div class="col-12 col-lg-6">
-                                <div class="row">
-                                    <div class="col-6">
+                                <div class="row row-cols-2 row-cols-sm-4 row-cols-lg-2">
+                                    <div class="col">
                                         <small class="text-muted">Avg/hr</small>
                                         <h5 id="avgCostHourValue" class="mb-1">$0.000</h5>
                                     </div>
-                                    <div class="col-6">
+                                    <div class="col">
                                         <small class="text-muted">Avg/day</small>
                                         <h5 id="avgCostDayValue" class="mb-1">$0.00</h5>
                                     </div>
-                                    <div class="col-6">
+                                    <div class="col">
                                         <small class="text-muted">Avg/mo</small>
                                         <h5 id="avgCostMonthValue" class="mb-1">$0.00</h5>
                                     </div>
-                                    <div class="col-6">
+                                    <div class="col">
                                         <small class="text-muted">Est/yr</small>
                                         <h5 id="avgCostYearValue" class="mb-1">$0.00</h5>
                                     </div>
@@ -318,7 +322,7 @@
             <div class="col-md-6">
                 <div class="row g-2">
                     <!-- UPS Info -->
-                    <div class="col-6">
+                    <div class="col-12 col-sm-6">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title h6"><i class="bi bi-info-circle"></i> UPS Information</h5>
@@ -328,7 +332,7 @@
                     </div>
 
                     <!-- Transfer Stats -->
-                    <div class="col-6">
+                    <div class="col-12 col-sm-6">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title h6"><i class="bi bi-arrow-repeat"></i> Transfer Statistics</h5>
@@ -338,7 +342,7 @@
                     </div>
 
                     <!-- Temperature -->
-                    <div class="col-6">
+                    <div class="col-12 col-sm-6">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title h6"><i class="bi bi-thermometer"></i> Temperature</h5>
@@ -355,7 +359,7 @@
                     </div>
 
                     <!-- Uptime Stats -->
-                    <div class="col-6">
+                    <div class="col-12 col-sm-6">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title h6"><i class="bi bi-clock-history"></i> System Uptime</h5>
@@ -591,6 +595,20 @@
             }
             chart.update('none'); // Prevent animation
         }
+
+        // User activity tracking
+        let lastUserActivity = Date.now();
+        const IDLE_TIMEOUT = 60000; // 1 minute
+
+        // Track user activity
+        function updateUserActivity() {
+            lastUserActivity = Date.now();
+        }
+
+        // Add activity listeners
+        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel'].forEach(event => {
+            document.addEventListener(event, updateUserActivity);
+        });
 
         // Chart configurations for different types
         const chartConfigs = {
@@ -1135,18 +1153,36 @@
         fetchData();
         fetchPowerStats();
 
-        // Update every 5 seconds
-        setInterval(fetchData, 5000);
-        
-        // Update power stats every minute
-        setInterval(fetchPowerStats, 60000);
+        // Update main stats every second
+        let lastFetchTime = 0;
+        const MIN_FETCH_INTERVAL = 1000; // Minimum 1 second between fetches
 
-        // Update historical data every minute
+        function scheduleFetch() {
+            const now = Date.now();
+            const timeSinceLastFetch = now - lastFetchTime;
+            
+            if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+                fetchData();
+                lastFetchTime = now;
+                setTimeout(scheduleFetch, MIN_FETCH_INTERVAL);
+            } else {
+                const waitTime = MIN_FETCH_INTERVAL - timeSinceLastFetch;
+                setTimeout(scheduleFetch, waitTime);
+            }
+        }
+        
+        // Start the fetch loop
+        scheduleFetch();
+        
+        // Update power stats every 5 seconds
+        setInterval(fetchPowerStats, 5000);
+
+        // Update historical data every 5 seconds
         setInterval(() => {
             if (historyChart) {
                 updateHistoricalData();
             }
-        }, 60000);
+        }, 5000);
 
         // Event listeners for chart type and time range changes
         document.getElementById('chartType').addEventListener('change', () => {
@@ -1285,7 +1321,7 @@
         });
 
         // Update power events every minute
-        setInterval(updatePowerEvents, 60000);
+        setInterval(updatePowerEvents, 5000);
         updateClientTime();
     </script>
 </body>
