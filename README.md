@@ -2,6 +2,8 @@
 
 A comprehensive web-based monitoring system for APC UPS devices with real-time statistics, historical data, and advanced features.
 
+![APC UPS Web Monitor](./images/apc-web-monitor.png)
+
 ## Features
 
 - **Real-time Monitoring**: Live UPS status, power consumption, and battery health
