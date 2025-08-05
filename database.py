@@ -51,6 +51,12 @@ def get_readings(hours=24, max_points=200):
     
     cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
     
+    # Initialize readings list
+    readings = []
+    
+    # Calculate the start time for the requested period
+    start_time = datetime.now() - timedelta(hours=hours)
+    
     # For longer periods, use aggregation to reduce data points
     if hours > 168:  # 7 days or more - use hourly aggregation
         # Use hourly intervals for periods longer than 7 days
@@ -69,6 +75,28 @@ def get_readings(hours=24, max_points=200):
             GROUP BY time_bucket
             ORDER BY time_bucket
         ''', (cutoff,))
+        
+        rows = c.fetchall()
+        
+        # Limit to max_points and sample evenly
+        if len(rows) > max_points:
+            step = len(rows) // max_points
+            rows = rows[::step][:max_points]
+        
+        for row in rows:
+            # Create aggregated data structure
+            aggregated_data = {
+                'WATTS': round(row[1], 1) if row[1] else 0,
+                'AMPS': round(row[2], 2) if row[2] else 0,
+                'LOADPCT': round(row[3], 1) if row[3] else 0,
+                'BCHARGE': round(row[4], 1) if row[4] else 0,
+                'SAMPLE_COUNT': row[5]
+            }
+            
+            readings.append({
+                'timestamp': row[6],  # Use first timestamp of the bucket
+                'data': aggregated_data
+            })
     elif hours > 72:  # 3-7 days - use 15-minute intervals
         # Use 15-minute intervals (00, 15, 30, 45) for periods 3-7 days
         c.execute('''
@@ -100,7 +128,6 @@ def get_readings(hours=24, max_points=200):
             step = len(rows) // max_points
             rows = rows[::step][:max_points]
         
-        readings = []
         for row in rows:
             # Create aggregated data structure
             aggregated_data = {
@@ -136,6 +163,41 @@ def get_readings(hours=24, max_points=200):
             }
             for row in rows
         ]
+    
+    # Fill in zeros before the first reading if there's a gap
+    if readings:
+        first_reading_time = datetime.fromisoformat(readings[0]['timestamp'].replace('Z', '+00:00'))
+        if first_reading_time > start_time:
+            # Add zero readings from start_time to first_reading_time
+            if hours > 168:  # Hourly aggregation
+                # Start from the hour before the first reading and go backward
+                current_time = first_reading_time.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+                while current_time >= start_time:
+                    zero_reading = {
+                        'timestamp': current_time.isoformat(),
+                        'data': {
+                            'WATTS': 0,
+                            'AMPS': 0,
+                            'LOADPCT': 0,
+                            'BCHARGE': 0,
+                            'SAMPLE_COUNT': 0
+                        }
+                    }
+                    readings.insert(0, zero_reading)
+                    current_time -= timedelta(hours=1)
+            else:  # Raw data - only add zero if there's a significant gap
+                time_diff = first_reading_time - start_time
+                if time_diff.total_seconds() > 300:  # Only if gap is more than 5 minutes
+                    zero_reading = {
+                        'timestamp': start_time.isoformat(),
+                        'data': {
+                            'WATTS': 0,
+                            'AMPS': 0,
+                            'LOADPCT': 0,
+                            'BCHARGE': 0
+                        }
+                    }
+                    readings.insert(0, zero_reading)
     
     conn.close()
     return readings
