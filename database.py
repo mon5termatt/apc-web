@@ -44,25 +44,98 @@ def store_reading(data):
     conn.commit()
     conn.close()
 
-def get_readings(hours=24):
-    """Get readings from the last N hours."""
+def get_readings(hours=24, max_points=200):
+    """Get readings from the last N hours with data aggregation for longer periods."""
     conn = sqlite3.connect('ups_history.db')
     c = conn.cursor()
     
     cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
     
-    c.execute(
-        'SELECT timestamp, data FROM ups_readings WHERE timestamp > ? ORDER BY timestamp',
-        (cutoff,)
-    )
-    
-    readings = [
-        {
-            'timestamp': row[0],
-            'data': json.loads(row[1])
-        }
-        for row in c.fetchall()
-    ]
+    # For longer periods, use aggregation to reduce data points
+    if hours > 168:  # 7 days or more - use hourly aggregation
+        # Use hourly intervals for periods longer than 7 days
+        c.execute('''
+            SELECT 
+                strftime('%Y-%m-%d %H:00', timestamp, 'localtime') as time_bucket,
+                AVG(CAST(json_extract(data, '$.WATTS') AS FLOAT)) as avg_watts,
+                AVG(CAST(json_extract(data, '$.AMPS') AS FLOAT)) as avg_amps,
+                AVG(CAST(json_extract(data, '$.LOADPCT') AS FLOAT)) as avg_load,
+                AVG(CAST(json_extract(data, '$.BCHARGE') AS FLOAT)) as avg_battery,
+                COUNT(*) as sample_count,
+                MIN(timestamp) as first_timestamp,
+                MAX(timestamp) as last_timestamp
+            FROM ups_readings 
+            WHERE timestamp > ?
+            GROUP BY time_bucket
+            ORDER BY time_bucket
+        ''', (cutoff,))
+    elif hours > 72:  # 3-7 days - use 15-minute intervals
+        # Use 15-minute intervals (00, 15, 30, 45) for periods 3-7 days
+        c.execute('''
+            SELECT 
+                strftime('%Y-%m-%d %H:00', timestamp, 'localtime') || 
+                CASE 
+                    WHEN CAST(strftime('%M', timestamp, 'localtime') AS INTEGER) < 15 THEN ':00'
+                    WHEN CAST(strftime('%M', timestamp, 'localtime') AS INTEGER) < 30 THEN ':15'
+                    WHEN CAST(strftime('%M', timestamp, 'localtime') AS INTEGER) < 45 THEN ':30'
+                    ELSE ':45'
+                END as time_bucket,
+                AVG(CAST(json_extract(data, '$.WATTS') AS FLOAT)) as avg_watts,
+                AVG(CAST(json_extract(data, '$.AMPS') AS FLOAT)) as avg_amps,
+                AVG(CAST(json_extract(data, '$.LOADPCT') AS FLOAT)) as avg_load,
+                AVG(CAST(json_extract(data, '$.BCHARGE') AS FLOAT)) as avg_battery,
+                COUNT(*) as sample_count,
+                MIN(timestamp) as first_timestamp,
+                MAX(timestamp) as last_timestamp
+            FROM ups_readings 
+            WHERE timestamp > ?
+            GROUP BY time_bucket
+            ORDER BY time_bucket
+        ''', (cutoff,))
+        
+        rows = c.fetchall()
+        
+        # Limit to max_points and sample evenly
+        if len(rows) > max_points:
+            step = len(rows) // max_points
+            rows = rows[::step][:max_points]
+        
+        readings = []
+        for row in rows:
+            # Create aggregated data structure
+            aggregated_data = {
+                'WATTS': round(row[1], 1) if row[1] else 0,
+                'AMPS': round(row[2], 2) if row[2] else 0,
+                'LOADPCT': round(row[3], 1) if row[3] else 0,
+                'BCHARGE': round(row[4], 1) if row[4] else 0,
+                'SAMPLE_COUNT': row[5]
+            }
+            
+            readings.append({
+                'timestamp': row[6],  # Use first timestamp of the bucket
+                'data': aggregated_data
+            })
+    else:
+        # For shorter periods, get all data but limit points
+        c.execute(
+            'SELECT timestamp, data FROM ups_readings WHERE timestamp > ? ORDER BY timestamp',
+            (cutoff,)
+        )
+        
+        rows = c.fetchall()
+        
+        # Limit to max_points and sample evenly
+        if len(rows) > max_points:
+            step = len(rows) // max_points
+            rows = rows[::step][:max_points]
+        
+        readings = [
+            {
+                'timestamp': row[0],
+                'data': json.loads(row[1])
+            }
+            for row in rows
+        ]
     
     conn.close()
     return readings

@@ -279,8 +279,8 @@ def status():
 def history():
     """Get historical readings."""
     try:
-        hours = int(request.args.get('hours', 24))
-        hours = min(max(1, hours), 168)  # Limit between 1 hour and 7 days
+        hours = float(request.args.get('hours', 24))
+        hours = min(max(0.0833, hours), 720)  # Limit between 5 minutes (0.0833 hours) and 30 days
         readings = database.get_readings(hours=hours)
         return jsonify(readings)
     except Exception as e:
