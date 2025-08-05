@@ -8,6 +8,7 @@ A comprehensive web-based monitoring system for APC UPS devices with real-time s
 
 - **Real-time Monitoring**: Live UPS status, power consumption, and battery health
 - **Historical Charts**: Interactive charts showing load, battery, temperature, voltage, and power costs over time
+- **Smart Data Aggregation**: Automatic data aggregation for optimal performance on longer time ranges
 - **Power Cost Analysis**: Calculate hourly, daily, weekly, and monthly electricity costs
 - **Mobile Responsive**: Optimized for desktop and mobile devices
 - **Dark/Light Mode**: Toggle between themes
@@ -185,10 +186,12 @@ The application supports URL parameters for automated configuration:
 - `?chart=amps` - Current Draw
 
 ### Time Ranges
+- `?hours=0.0833` - Last 5 Minutes
 - `?hours=1` - Last Hour
 - `?hours=24` - Last 24 Hours
 - `?hours=72` - Last 3 Days
 - `?hours=168` - Last 7 Days
+- `?hours=720` - Last Month (30 days)
 
 ### Examples
 - `http://localhost:5000/?chart=amps&cycle` - Amps chart with cycling
@@ -203,13 +206,19 @@ The application supports URL parameters for automated configuration:
 - **Temperature Monitoring**: Internal UPS temperature with warnings
 - **Voltage Tracking**: Input/output voltage stability
 - **Cost Analysis**: Real-time electricity cost calculations
+- **Historical Cost Estimates**: Based on historical data for more accurate predictions
 
 ### Historical Data
 - **Interactive Charts**: Multiple chart types with time range selection
+- **Smart Data Aggregation**: Automatic data aggregation for longer time periods
+  - ≤3 days: Raw data with point limiting
+  - 3-7 days: 15-minute intervals (00, 15, 30, 45)
+  - >7 days: Hourly intervals for optimal performance
 - **Data Persistence**: SQLite database stores historical readings
 - **Continuous Collection**: Data collected every 5 seconds regardless of web traffic
 - **Automatic Cleanup**: Old data automatically removed after 7 days
 - **Export Ready**: Data available via API endpoints
+- **Gap Filling**: Automatic zero-filling for data gaps to ensure complete timelines
 
 ### Power Event Detection
 - **Event Logging**: Automatic detection and logging of power events
@@ -223,14 +232,18 @@ The application supports URL parameters for automated configuration:
 - **Chart Cycling**: Automatic rotation through different chart types
 - **Fullscreen Mode**: Dedicated fullscreen display for monitoring
 - **Warning Overlay**: Flashing border when UPS is on battery power
+- **Event Management**: Mark power events as read to clean up the interface
+- **Real-time Updates**: Data updates every second for critical metrics
 
 ## API Endpoints
 
 - `GET /` - Main web interface
 - `GET /api/status` - Current UPS status (JSON)
-- `GET /api/history?hours=N` - Historical data (JSON)
+- `GET /api/history?hours=N` - Historical data (JSON, supports 0.0833-720 hours)
 - `GET /api/events` - Power events (JSON)
+- `GET /api/power_stats` - Historical power statistics and cost estimates (JSON)
 - `GET /api/health` - System health check (JSON)
+- `POST /api/events/acknowledge` - Mark power events as read (JSON)
 
 ## Troubleshooting
 
